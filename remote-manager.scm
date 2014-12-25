@@ -84,15 +84,20 @@
 
 (define (for-each-host config proc)
   (let ((hosts (or (assq-ref config 'hosts) (error "no hosts in config"))))
-    (for-each (lambda (host-id) (proc config host-id)) hosts)))
+    (for-each (lambda (host-entry) (proc config (car host-entry))) hosts)))
 
 (define (main args)
-  (match args
-         ((_ "ping" host-id)
-          (format #t "Checking the availability of ~A...\n" host-id)
-          (format #t "~A is ~A\n"
+  (define (ping-action config host-id)
+   (format #t "Checking the availability of ~A...\n" host-id)
+   (format #t "~A is ~A\n"
            host-id
            (if (ping config host-id) "up" "down")))
+
+  (match args
+         ((_ "ping" host-id)
+          (ping-action config host-id))
+         ((_ "ping-all")
+          (for-each-host config ping-action))
          ((_ "start" host-id)
           (format #t "Attempting to wake up ~A...\n" host-id)
           (wake-up config host-id))
@@ -104,9 +109,10 @@
           (suspend config host-id))
          ((cl . _)
           (let (( e (current-error-port)))
-          (format e "Usage: ~A command host-id\n" cl)
+          (format e "Usage: ~A command arg...\n" cl)
           (format e "Available commands:\n")
-          (format e "  ping\n")
-          (format e "  start\n")
-          (format e "  stop\n")
-          (format e "  suspend\n")))))
+          (format e "  ping host-id\n")
+          (format e "  ping-all\n")
+          (format e "  start host-id\n")
+          (format e "  stop host-id\n")
+          (format e "  suspend host-id\n")))))
