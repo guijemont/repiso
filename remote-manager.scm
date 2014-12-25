@@ -9,6 +9,12 @@
 (use-modules (srfi srfi-1))
 (use-modules (srfi srfi-26))
 
+(define debug-messages #f)
+
+(define (debug . args)
+  (and debug-messages
+       (apply format (current-error-port) args)))
+
 (define config
   (let* ((home (passwd:dir (getpw (getuid))))
          (sep file-name-separator-string)
@@ -24,7 +30,7 @@
         (lp (read-line port 'concat)
             (string-append new-data concatenated-output)))))
 
-  (format (current-error-port) "Running command: ~A\n" (cons command args))
+  (debug "Running command: ~A\n" (cons command args))
   (let* ((port (open-input-pipe (string-join (cons command args))))
          (output (read-all port))
          (return-value (status:exit-val (close-pipe port))))
@@ -117,7 +123,7 @@
 
 (define (main args)
   (define (ping-action config host-id)
-   (format #t "Checking the availability of ~A...\n" host-id)
+   (debug "Checking the availability of ~A...\n" host-id)
    (format #t "~A is ~A\n"
            host-id
            (if (ping config host-id) "up" "down")))
