@@ -5,6 +5,7 @@
 (use-modules (ice-9 rdelim))
 (use-modules (ice-9 popen))
 (use-modules (ice-9 match))
+(use-modules (ice-9 threads))
 (use-modules (srfi srfi-1))
 (use-modules (srfi srfi-26))
 
@@ -90,7 +91,7 @@
 
 (define (for-each-host config proc)
   (let ((hosts (or (assq-ref config 'hosts) (error "no hosts in config"))))
-    (for-each (lambda (host-entry) (proc config (car host-entry))) hosts)))
+    (par-for-each (lambda (host-entry) (proc config (car host-entry))) hosts)))
 
 (define (nm-check-connection connection-name)
   (match (run-command "nmcli -t -f name connection status")
