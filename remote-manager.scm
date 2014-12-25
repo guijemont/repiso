@@ -5,6 +5,8 @@
 (use-modules (ice-9 rdelim))
 (use-modules (ice-9 popen))
 (use-modules (ice-9 match))
+(use-modules (srfi srfi-1))
+(use-modules (srfi srfi-26))
 
 (define config
   (let* ((home (passwd:dir (getpw (getuid))))
@@ -41,17 +43,17 @@
                   return-value output)
           #f)))))
 
-(define (config-host-key config host-id key)
-  (define (get-default key)
-    (let ((defaults (or (assq-ref config 'default)
-                        (error "bad config: no defaults"))))
-      (assq-ref defaults key)))
+(define (get-default config key)
+  (let ((defaults (or (assq-ref config 'default)
+                      (error "bad config: no defaults"))))
+    (assq-ref defaults key)))
 
+(define (config-host-key config host-id key)
   (let* ((hosts (or (assq-ref config 'hosts) (error "bad config: no hosts")))
          (host-entry (or (assoc-ref hosts host-id)
                          (error "bad config: no entry for" host-id))))
     (or (assq-ref host-entry key)
-        (get-default key)
+        (get-default config key)
         (error "bad config: could not find key " key "for host" host-id))))
 
 (define (config-proxy config)
@@ -61,6 +63,7 @@
   (ssh proxy (format #f "wakeonlan ~A" mac-address)))
 
 (define (wake-up config host-id)
+ (ensure-connected config)
  (wake-up-impl
    (config-proxy config)
    (config-host-key config host-id 'mac)))
@@ -68,15 +71,18 @@
 (define (halt config host-id)
   (define (get-val key) (config-host-key config host-id key))
 
+  (ensure-connected config)
   (ssh (get-val 'hostname) (get-val 'halt-command) #:user "root"))
 
 (define (suspend config host-id)
   (define (get-val key) (config-host-key config host-id key))
 
+  (ensure-connected config)
   (ssh (get-val 'hostname) (get-val 'suspend-command)))
 
 
 (define (ping config host-id)
+ (ensure-connected config)
  (match (run-command "ping -c 1"
                      (config-host-key config host-id 'hostname))
         ((retval . _)
@@ -85,6 +91,28 @@
 (define (for-each-host config proc)
   (let ((hosts (or (assq-ref config 'hosts) (error "no hosts in config"))))
     (for-each (lambda (host-entry) (proc config (car host-entry))) hosts)))
+
+(define (nm-check-connection connection-name)
+  (match (run-command "nmcli -t -f name connection status")
+         ((0 . output)
+          (and (find (cut equal? connection-name <>)
+                     (string-split output #\newline))
+               #t))
+         ((ret . output)
+          (error "Something happened when running nmcli:" ret output))))
+
+(define (nm-connect connection-name)
+  (match (run-command "nmcli connection up id " connection-name)
+         ((0 . _) *unspecified*)
+         ((ret . output)
+          (error "Could not connect to connection"
+                 connection-name ret output))))
+
+(define (ensure-connected config)
+  (let ((connection-name (get-default config 'need-connection)))
+   (and connection-name
+        (not (nm-check-connection connection-name))
+        (nm-connect connection-name))))
 
 (define (main args)
   (define (ping-action config host-id)
