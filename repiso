@@ -1,6 +1,7 @@
 #!/usr/bin/guile-2.0 \
 -e main -s
 !#
+; vim: ft=scheme
 
 (use-modules (ice-9 rdelim))
 (use-modules (ice-9 popen))
