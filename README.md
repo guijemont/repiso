@@ -21,8 +21,8 @@ Some explanations:
    wakeonlan.
  - `hosts` is a list of the hosts you want to manage. Each of them need to
    have at least a `hostname` (used to ssh to the machine) and a `mac` entry
-   (used for wakeonlan). They can also have a specific `hald-command` or
-   `suspend-command`
+   (used for wakeonlan). They can also have a specific `halt-command` or
+   `suspend-command`.
  - `default` contains the default configuration for the optional settings of
    hosts, as well as the `need-connection` setting (currently not supported on
    a per-host basis). The `need-connection` setting, if it exists, is the name
