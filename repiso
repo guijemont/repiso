@@ -18,7 +18,7 @@
 (define config
   (let* ((home (passwd:dir (getpw (getuid))))
          (sep file-name-separator-string)
-         (config-file (string-append home sep ".remote-manager.conf")))
+         (config-file (string-append home sep ".repiso.conf")))
     (with-input-from-file config-file read)))
 
 
