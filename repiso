@@ -106,7 +106,6 @@
 
 
 (define (ping config host-id)
- (ensure-connected config)
  (match (run-command "ping -c 1"
                      (config-host-key config host-id 'hostname))
         ((retval . _)
@@ -147,8 +146,10 @@
 
   (match args
          ((_ "ping" host-id)
+          (ensure-connected config)
           (ping-action config host-id))
          ((_ "ping-all")
+          (ensure-connected config)
           (for-each-host config ping-action))
          ((_ "start" host-id)
           (format #t "Attempting to wake up ~A...\n" host-id)
