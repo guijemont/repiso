@@ -135,7 +135,9 @@
   (let ((connection-name (get-default config 'need-connection)))
    (and connection-name
         (not (nm-check-connection connection-name))
-        (nm-connect connection-name))))
+        (begin
+          (format #t "Connecting to ~A\n" connection-name)
+          (nm-connect connection-name)))))
 
 (define (main args)
   (define (ping-action config host-id)
