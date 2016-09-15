@@ -98,18 +98,25 @@
   (ensure-connected config)
   (ssh (get-val 'hostname) (get-val 'halt-command) #:user "root"))
 
+
+
+(define (ping config host-id)
+ (match (run-command "ping -c 1 -w 1"
+                     (config-host-key config host-id 'hostname))
+        ((retval . _)
+         (eqv? retval 0))))
+
 (define (suspend config host-id)
   (define (get-val key) (config-host-key config host-id key))
 
   (ensure-connected config)
-  (ssh (get-val 'hostname) (get-val 'suspend-command)))
+  (let ((thread
+          (call-with-new-thread
+            (lambda ()
+              (ssh (get-val 'hostname) (get-val 'suspend-command))))))
+    (while (ping config host-id) *unspecified*) ; wait until host is suspended
+    (cancel-thread thread)))
 
-
-(define (ping config host-id)
- (match (run-command "ping -c 1"
-                     (config-host-key config host-id 'hostname))
-        ((retval . _)
-         (eqv? retval 0))))
 
 (define (for-each-host config proc)
   (let ((hosts (or (assq-ref config 'hosts) (error "no hosts in config"))))
@@ -155,13 +162,17 @@
           (for-each-host config ping-action))
          ((_ "start" host-id)
           (format #t "Attempting to wake up ~A...\n" host-id)
-          (wake-up config host-id))
+          (wake-up config host-id)
+          (while (not (ping config host-id)) *unspecified*)
+          (format #t "Host is up.\n")
+          )
          ((_ "stop" host-id)
           (format #t "Attempting to stop ~A...\n" host-id)
           (halt config host-id))
          ((_ "suspend" host-id)
           (format #t "Attempting to suspend ~A...\n" host-id)
-          (suspend config host-id))
+          (suspend config host-id)
+          (format #t "Done.\n"))
          ((cl . _)
           (let (( e (current-error-port)))
            (format e "Usage: ~A command arg...\n" cl)
